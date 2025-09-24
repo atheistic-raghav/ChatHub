@@ -1,0 +1,487 @@
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from werkzeug.security import generate_password_hash, check_password_hash
+from app import db, socketio
+from app.models import User, Message, Friendship, PrivateMessage, Ban, Kick
+from datetime import datetime, timedelta, timezone
+from flask_socketio import emit, join_room, leave_room
+
+main = Blueprint('main', __name__)
+sid_to_username = {}
+online_users = {}  # Changed to dict to track users per room
+
+# Available public chat rooms
+CHAT_ROOMS = [
+    'Chat Room 1',
+    'Chat Room 2', 
+    'Chat Room 3',
+    'Chat Room 4',
+    'Chat Room 5'
+]
+
+def get_private_room_name(user1, user2):
+    """Consistent name for private chat room."""
+    return '_'.join(sorted([user1, user2]))
+
+def prune_old_messages():
+    cutoff = datetime.utcnow() - timedelta(hours=24)
+    Message.query.filter(Message.timestamp < cutoff).delete()
+    db.session.commit()
+
+def is_kicked(user):
+    kick = Kick.query.filter_by(user_id=user.id).first()
+    return kick and datetime.utcnow() < kick.kicked_at + timedelta(hours=12)
+
+def to_ist_string(dt):
+    """Convert UTC datetime to IST string."""
+    ist = timezone(timedelta(hours=5, minutes=30))
+    return dt.astimezone(ist).strftime('%H:%M:%S')
+
+def create_system_message(mod_username, action, target_username):
+    """Create and broadcast a system moderation message to ALL chat rooms"""
+    if action == 'kick':
+        content = f"{mod_username} 🔥MOD kicked {target_username} for 12 hours"
+    elif action == 'ban':
+        content = f"{mod_username} 🔥MOD banned {target_username} permanently"
+    
+    # Create system user if it doesn't exist
+    system_user = User.query.filter_by(username='SYSTEM').first()
+    if not system_user:
+        system_user = User(
+            username='SYSTEM',
+            password_hash='no-password-system-user',
+            is_mod=True
+        )
+        db.session.add(system_user)
+        db.session.commit()
+    
+    # Create system message in ALL chat rooms
+    for room_name in CHAT_ROOMS:
+        system_msg = Message(
+            user_id=system_user.id,
+            content=content,
+            timestamp=datetime.utcnow(),
+            room_name=room_name
+        )
+        db.session.add(system_msg)
+    
+    db.session.commit()
+    
+    # Broadcast system message to ALL chat rooms
+    for room_name in CHAT_ROOMS:
+        socketio.emit('receive_message', {
+            'username': 'SYSTEM',
+            'content': content,
+            'timestamp': datetime.utcnow().isoformat(),
+            'is_mod': True,
+            'is_system': True
+        }, room=room_name)
+
+@main.route('/')
+def home():
+    if 'user' in session:
+        return redirect(url_for('main.chat_rooms'))
+    return redirect(url_for('main.login'))
+
+@main.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        if not username or not password:
+            flash('Username and Password are required.')
+            return redirect(url_for('main.register'))
+        if username.upper() == 'SYSTEM':
+            flash('Username "SYSTEM" is reserved.')
+            return redirect(url_for('main.register'))
+        existing_user = User.query.filter(db.func.lower(User.username) == username.lower()).first()
+        if existing_user:
+            flash('Username already taken')
+            return redirect(url_for('main.register'))
+        hashed_password = generate_password_hash(password)
+        user = User(username=username, password_hash=hashed_password)
+        db.session.add(user)
+        db.session.commit()
+        flash('Account successfully created. Please login.')
+        return redirect(url_for('main.login'))
+    return render_template('register.html', current_user=None)
+
+@main.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        user = User.query.filter_by(username=username).first()
+        if user and check_password_hash(user.password_hash, password):
+            session['user'] = user.username
+            flash('Logged in successfully.')
+            return redirect(url_for('main.chat_rooms'))
+        else:
+            flash('Invalid username or password.')
+    return render_template('login.html', current_user=None)
+
+@main.route('/logout')
+def logout():
+    session.pop('user', None)
+    flash('You have been logged out.')
+    return redirect(url_for('main.login'))
+
+# NEW: Chat Rooms Selection Page
+@main.route('/chat_rooms')
+def chat_rooms():
+    if 'user' not in session:
+        flash('Please login first.')
+        return redirect(url_for('main.login'))
+    
+    current_user = User.query.filter_by(username=session['user']).first()
+    
+    if Ban.query.filter_by(user_id=current_user.id).first():
+        flash('You are banned from all chat rooms.')
+        return redirect(url_for('main.logout'))
+
+    if is_kicked(current_user):
+        flash('You are temporarily kicked from all chat rooms.')
+        return redirect(url_for('main.logout'))
+    
+    return render_template('chat_rooms.html', current_user=current_user, rooms=CHAT_ROOMS)
+
+@main.route('/friends')
+def friends():
+    if 'user' not in session:
+        flash('Please login first.')
+        return redirect(url_for('main.login'))
+    current_user = User.query.filter_by(username=session['user']).first()
+    friends = current_user.get_friends()
+    friend_requests = current_user.get_friend_requests()
+    return render_template('friends.html', current_user=current_user, friends=friends, friend_requests=friend_requests)
+
+@main.route('/search_users', methods=['GET', 'POST'])
+def search_users():
+    if 'user' not in session:
+        flash('Please login first.')
+        return redirect(url_for('main.login'))
+    current_user = User.query.filter_by(username=session['user']).first()
+    users = []
+    if request.method == 'POST':
+        term = request.form.get('search_term', '').strip()
+        if term:
+            users = User.query.filter(User.username.ilike(f'%{term}%'), User.id != current_user.id, User.username != 'SYSTEM').all()
+    return render_template('search_users.html', users=users, current_user=current_user)
+
+# FIXED: Added <int:user_id> parameter to route decorator
+@main.route('/send_friend_request/<int:user_id>')
+def send_friend_request(user_id):
+    if 'user' not in session:
+        flash('Please login first.')
+        return redirect(url_for('main.login'))
+    current_user = User.query.filter_by(username=session['user']).first()
+    target_user = User.query.get_or_404(user_id)
+    existing = Friendship.query.filter(
+        ((Friendship.sender_id == current_user.id) & (Friendship.receiver_id == target_user.id)) |
+        ((Friendship.sender_id == target_user.id) & (Friendship.receiver_id == current_user.id)),
+        Friendship.status.in_(['pending', 'accepted'])
+    ).first()
+    if existing:
+        flash('Friendship or request already exists.')
+    else:
+        rejected = Friendship.query.filter(
+            ((Friendship.sender_id == current_user.id) & (Friendship.receiver_id == target_user.id)) |
+            ((Friendship.sender_id == target_user.id) & (Friendship.receiver_id == current_user.id)),
+            Friendship.status == 'rejected'
+        ).first()
+        if rejected:
+            rejected.status = 'pending'
+            rejected.updated_at = datetime.utcnow()
+        else:
+            new_request = Friendship(sender_id=current_user.id, receiver_id=target_user.id, status='pending')
+            db.session.add(new_request)
+        db.session.commit()
+        flash(f'Friend request sent to {target_user.username}')
+    return redirect(url_for('main.search_users'))
+
+# FIXED: Added <int:request_id> parameter to route decorator
+@main.route('/accept_friend_request/<int:request_id>')
+def accept_friend_request(request_id):
+    if 'user' not in session:
+        flash('Please login first.')
+        return redirect(url_for('main.login'))
+    current_user = User.query.filter_by(username=session['user']).first()
+    friend_request = Friendship.query.get_or_404(request_id)
+    if friend_request.receiver_id != current_user.id:
+        flash('Unauthorized action.')
+        return redirect(url_for('main.friends'))
+    friend_request.status = 'accepted'
+    friend_request.updated_at = datetime.utcnow()
+    db.session.commit()
+    flash(f'You are now friends with {friend_request.sender.username}')
+    return redirect(url_for('main.friends'))
+
+# FIXED: Added <int:request_id> parameter to route decorator
+@main.route('/reject_friend_request/<int:request_id>')
+def reject_friend_request(request_id):
+    if 'user' not in session:
+        flash('Please login first.')
+        return redirect(url_for('main.login'))
+    current_user = User.query.filter_by(username=session['user']).first()
+    friend_request = Friendship.query.get_or_404(request_id)
+    if friend_request.receiver_id != current_user.id:
+        flash('Unauthorized action.')
+        return redirect(url_for('main.friends'))
+    friend_request.status = 'rejected'
+    friend_request.updated_at = datetime.utcnow()
+    db.session.commit()
+    flash('Friend request rejected.')
+    return redirect(url_for('main.friends'))
+
+# UPDATED: Chat route now handles specific rooms
+@main.route('/chat')
+@main.route('/chat/<room_name>')
+def chat(room_name='Chat Room 1'):
+    if 'user' not in session:
+        flash('Please login first.')
+        return redirect(url_for('main.login'))
+
+    # Validate room name
+    if room_name not in CHAT_ROOMS:
+        flash('Invalid chat room.')
+        return redirect(url_for('main.chat_rooms'))
+
+    user = User.query.filter_by(username=session['user']).first()
+
+    if Ban.query.filter_by(user_id=user.id).first():
+        flash('You are banned from all chat rooms.')
+        return redirect(url_for('main.logout'))
+
+    if is_kicked(user):
+        flash('You are temporarily kicked from all chat rooms.')
+        return redirect(url_for('main.logout'))
+
+    prune_old_messages()
+
+    # Get messages for specific room only
+    messages_raw = Message.query.filter_by(room_name=room_name).order_by(Message.timestamp).all()
+    IST_OFFSET = timedelta(hours=5, minutes=30)
+    messages = []
+    for m in messages_raw:
+        ist_time = (m.timestamp + IST_OFFSET).strftime('%H:%M:%S')
+        is_system = m.user.username == 'SYSTEM'
+        messages.append({
+            'user': m.user,
+            'content': m.content,
+            'timestamp': ist_time,
+            'is_system': is_system
+        })
+
+    return render_template('chat.html', 
+                         user=session['user'], 
+                         current_user=user, 
+                         messages=messages, 
+                         room_name=room_name,
+                         all_rooms=CHAT_ROOMS)
+
+# FIXED: Added <username> parameter to route decorator
+@main.route('/kick/<username>')
+def kick_user(username):
+    mod = User.query.filter_by(username=session.get('user')).first()
+    if not mod or not mod.is_mod:
+        flash('Unauthorized.')
+        return redirect(url_for('main.chat_rooms'))
+    if username == mod.username:
+        flash('Cannot moderate yourself.')
+        return redirect(url_for('main.chat_rooms'))
+    target = User.query.filter_by(username=username).first_or_404()
+    existing_kick = Kick.query.filter_by(user_id=target.id).first()
+    if existing_kick:
+        existing_kick.kicked_at = datetime.utcnow()
+    else:
+        new_kick = Kick(user_id=target.id, kicked_at=datetime.utcnow())
+        db.session.add(new_kick)
+    db.session.commit()
+    
+    create_system_message(mod.username, 'kick', username)
+    flash(f'{username} has been kicked from all chat rooms for 12 hours.')
+    return redirect(url_for('main.chat_rooms'))
+
+# FIXED: Added <username> parameter to route decorator
+@main.route('/ban/<username>')
+def ban_user(username):
+    mod = User.query.filter_by(username=session.get('user')).first()
+    if not mod or not mod.is_mod:
+        flash('Unauthorized.')
+        return redirect(url_for('main.chat_rooms'))
+    if username == mod.username:
+        flash('Cannot moderate yourself.')
+        return redirect(url_for('main.chat_rooms'))
+    target = User.query.filter_by(username=username).first_or_404()
+    existing_ban = Ban.query.filter_by(user_id=target.id).first()
+    if existing_ban:
+        flash(f'{username} is already banned.')
+    else:
+        new_ban = Ban(user_id=target.id, banned_at=datetime.utcnow())
+        db.session.add(new_ban)
+        db.session.commit()
+        
+        create_system_message(mod.username, 'ban', username)
+        flash(f'{username} has been banned from all chat rooms permanently.')
+    return redirect(url_for('main.chat_rooms'))
+
+# FIXED: Added <int:friend_id> parameter to route decorator AND current_user to template
+@main.route('/private_chat/<int:friend_id>')
+def private_chat(friend_id):
+    if 'user' not in session:
+        flash('Please login first.')
+        return redirect(url_for('main.login'))
+
+    current_user = User.query.filter_by(username=session['user']).first()
+    friend = User.query.get_or_404(friend_id)
+
+    if not current_user.is_friend_with(friend):
+        flash('You can only chat with friends.')
+        return redirect(url_for('main.friends'))
+
+    messages_raw = PrivateMessage.query.filter(
+        ((PrivateMessage.sender_id == current_user.id) & (PrivateMessage.receiver_id == friend.id)) |
+        ((PrivateMessage.sender_id == friend.id) & (PrivateMessage.receiver_id == current_user.id))
+    ).order_by(PrivateMessage.timestamp).all()
+
+    IST_OFFSET = timedelta(hours=5, minutes=30)
+    messages = []
+    for m in messages_raw:
+        ist_time = (m.timestamp + IST_OFFSET).strftime('%H:%M:%S')
+        messages.append({'sender': m.sender, 'content': m.content, 'timestamp': ist_time})
+
+    return render_template('private_chat.html', user=current_user, friend=friend, messages=messages, current_user=current_user)
+
+# Make Red a moderator
+@main.route('/make_red_admin')
+def make_red_admin():
+    user = User.query.filter_by(username='Red').first()
+    if user:
+        user.is_mod = True
+        db.session.commit()
+        flash('Red is now a moderator!')
+    else:
+        flash('User Red not found!')
+    return redirect(url_for('main.chat_rooms'))
+
+# SocketIO handlers - UPDATED for multiple rooms
+@socketio.on('send_message')
+def handle_send_message(data):
+    user = User.query.filter_by(username=data.get('username')).first()
+    room_name = data.get('room_name', 'Chat Room 1')
+    
+    if not user or Ban.query.filter_by(user_id=user.id).first() or is_kicked(user):
+        return
+    
+    if room_name not in CHAT_ROOMS:
+        return
+        
+    msg = Message(
+        user_id=user.id, 
+        content=data.get('content'), 
+        timestamp=datetime.utcnow(),
+        room_name=room_name
+    )
+    db.session.add(msg)
+    db.session.commit()
+    
+    # Emit to specific room only
+    emit('receive_message', {
+        'username': data.get('username'),
+        'content': data.get('content'),
+        'timestamp': msg.timestamp.isoformat(),
+        'is_mod': user.is_mod,
+        'is_system': False
+    }, room=room_name)
+
+@socketio.on('join')
+def on_join(data):
+    username = data.get('username')
+    room = data.get('room')
+    join_room(room)
+    emit('user_joined', {'username': username}, room=room)
+
+@socketio.on('leave')
+def on_leave(data):
+    username = data.get('username')
+    room = data.get('room')
+    leave_room(room)
+    emit('user_left', {'username': username}, room=room)
+
+@socketio.on('join_private')
+def on_join_private(data):
+    user1 = session.get('user')
+    user2 = data.get('with')
+    room = get_private_room_name(user1, user2)
+    join_room(room)
+
+@socketio.on('send_private_message')
+def on_send_private_message(data):
+    sender = User.query.filter_by(username=data.get('from')).first()
+    receiver = User.query.filter_by(username=data.get('to')).first()
+    if not sender or not receiver:
+        return
+    pm = PrivateMessage(sender_id=sender.id, receiver_id=receiver.id, content=data.get('content'), timestamp=datetime.utcnow())
+    db.session.add(pm)
+    db.session.commit()
+    room = get_private_room_name(data.get('from'), data.get('to'))
+    
+    emit('receive_private_message', {
+        'from': data.get('from'),
+        'to': data.get('to'),
+        'content': data.get('content'),
+        'timestamp': pm.timestamp.isoformat(),
+        'is_mod': sender.is_mod
+    }, room=room)
+
+@socketio.on('user_connected')
+def on_user_connected(data):
+    username = data.get('username')
+    room_name = data.get('room_name', 'Chat Room 1')
+    user = User.query.filter_by(username=username).first()
+    sid = request.sid
+    sid_to_username[sid] = username
+    
+    # Initialize room in online_users if not exists
+    if room_name not in online_users:
+        online_users[room_name] = set()
+    
+    online_users[room_name].add(username)
+    
+    # Join the specific room
+    join_room(room_name)
+    
+    online_users_with_status = []
+    for u in online_users[room_name]:
+        user_obj = User.query.filter_by(username=u).first()
+        if user_obj and user_obj.username != 'SYSTEM':
+            online_users_with_status.append({
+                'username': u,
+                'is_mod': user_obj.is_mod if user_obj else False
+            })
+    
+    emit('online_users', online_users_with_status, room=room_name)
+
+@socketio.on('disconnect')
+def on_disconnect():
+    sid = request.sid
+    username = sid_to_username.pop(sid, None)
+    if username:
+        # Remove user from all rooms
+        for room_name in CHAT_ROOMS:
+            if room_name in online_users and username in online_users[room_name]:
+                online_users[room_name].discard(username)
+                
+                online_users_with_status = []
+                for u in online_users[room_name]:
+                    user_obj = User.query.filter_by(username=u).first()
+                    if user_obj and user_obj.username != 'SYSTEM':
+                        online_users_with_status.append({
+                            'username': u,
+                            'is_mod': user_obj.is_mod if user_obj else False
+                        })
+                
+                emit('online_users', online_users_with_status, room=room_name)
+
+@socketio.on('connect')
+def on_connect():
+    pass

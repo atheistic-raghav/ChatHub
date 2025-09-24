@@ -1,0 +1,735 @@
+{% extends 'base.html' %}
+
+{% block title %}My Friends - ChatHub{% endblock %}
+
+{% block content %}
+<div class="friends-container">
+    <div class="friends-content">
+        <!-- Professional Header -->
+        <div class="friends-header">
+            <div class="header-content">
+                <h1 class="page-title">
+                    <i class="fas fa-users"></i>
+                    My Friends
+                </h1>
+                <p class="page-subtitle">Connect and chat with your network</p>
+            </div>
+            
+            <div class="header-actions">
+                <a href="{{ url_for('main.search_users') }}" class="btn-primary">
+                    <i class="fas fa-user-plus"></i>
+                    <span>Add Friends</span>
+                </a>
+            </div>
+        </div>
+
+        {% if friends %}
+            <div class="friends-section">
+                <div class="section-header">
+                    <h2>
+                        <i class="fas fa-users"></i>
+                        Friends ({{ friends|length }})
+                    </h2>
+                    <div class="section-subtitle">Active connections</div>
+                </div>
+                
+                <div class="friends-grid">
+                    {% for friend in friends %}
+                        <div class="friend-card" data-friend="{{ loop.index }}">
+                            <div class="friend-avatar">
+                                {{ friend.username[0].upper() }}
+                            </div>
+                            <div class="friend-info">
+                                <div class="friend-name {% if friend.is_mod %}mod-user{% endif %}">
+                                    {{ friend.username }}
+                                    {% if friend.is_mod %}<span class="mod-badge">MOD</span>{% endif %}
+                                </div>
+                                <div class="friend-meta">
+                                    <div class="status-indicator">
+                                        <i class="fas fa-circle"></i>
+                                        <span>Online</span>
+                                    </div>
+                                    <div class="joined-date">{{ friend.created_at.strftime('%b %Y') }}</div>
+                                </div>
+                            </div>
+                            <div class="friend-actions">
+                                <a href="{{ url_for('main.private_chat', friend_id=friend.id) }}" class="chat-btn">
+                                    <i class="fas fa-comment"></i>
+                                    <span>Chat</span>
+                                </a>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        {% if friend_requests %}
+            <div class="requests-section">
+                <div class="section-header">
+                    <h2>
+                        <i class="fas fa-user-clock"></i>
+                        Friend Requests ({{ friend_requests|length }})
+                    </h2>
+                    <div class="section-subtitle">Pending invitations</div>
+                </div>
+                
+                <div class="requests-grid">
+                    {% for request in friend_requests %}
+                        <div class="request-card" data-request="{{ loop.index }}">
+                            <div class="request-avatar">
+                                {{ request.sender.username[0].upper() }}
+                            </div>
+                            <div class="request-info">
+                                <div class="request-name {% if request.sender.is_mod %}mod-user{% endif %}">
+                                    {{ request.sender.username }}
+                                    {% if request.sender.is_mod %}<span class="mod-badge">MOD</span>{% endif %}
+                                </div>
+                                <div class="request-message">wants to be your friend</div>
+                                <div class="request-date">{{ request.created_at.strftime('%b %d') }}</div>
+                            </div>
+                            <div class="request-actions">
+                                <a href="{{ url_for('main.accept_friend_request', request_id=request.id) }}" class="btn-accept">
+                                    <i class="fas fa-check"></i>
+                                </a>
+                                <a href="{{ url_for('main.reject_friend_request', request_id=request.id) }}" class="btn-reject">
+                                    <i class="fas fa-times"></i>
+                                </a>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        {% if not friends and not friend_requests %}
+            <div class="empty-state">
+                <div class="empty-icon">
+                    <i class="fas fa-user-friends"></i>
+                </div>
+                <h3>No Friends Yet</h3>
+                <p>Start building your network by finding and adding friends</p>
+                <a href="{{ url_for('main.search_users') }}" class="btn-primary btn-lg">
+                    <i class="fas fa-search"></i>
+                    <span>Find Friends</span>
+                </a>
+            </div>
+        {% endif %}
+
+        <!-- Professional Quick Navigation -->
+        <div class="quick-nav">
+            <a href="{{ url_for('main.search_users') }}" class="nav-btn">
+                <div class="nav-icon search">
+                    <i class="fas fa-search"></i>
+                </div>
+                <div class="nav-content">
+                    <span class="nav-title">Find Users</span>
+                    <span class="nav-subtitle">Discover people</span>
+                </div>
+            </a>
+            
+            <a href="{{ url_for('main.chat_rooms') }}" class="nav-btn">
+                <div class="nav-icon rooms">
+                    <i class="fas fa-comments"></i>
+                </div>
+                <div class="nav-content">
+                    <span class="nav-title">Chat Rooms</span>
+                    <span class="nav-subtitle">Join conversations</span>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Fullscreen Layout */
+    .main-content {
+        padding: 0 !important;
+        margin: 0 !important;
+        height: calc(100vh - 80px);
+        max-width: none !important;
+        overflow-y: auto;
+    }
+
+    .friends-container {
+        min-height: 100%;
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        position: relative;
+    }
+
+    .friends-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: radial-gradient(circle at 10% 20%, rgba(102, 126, 234, 0.1) 0%, transparent 50%),
+                    radial-gradient(circle at 90% 80%, rgba(118, 75, 162, 0.1) 0%, transparent 50%);
+        pointer-events: none;
+    }
+
+    .friends-content {
+        position: relative;
+        z-index: 1;
+        padding: 3rem 2rem;
+        display: flex;
+        flex-direction: column;
+        gap: 3rem;
+        min-height: 100%;
+    }
+
+    /* Professional Header */
+    .friends-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 2rem;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(15px);
+        border-radius: 1.5rem;
+        padding: 2rem;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .header-content {
+        flex: 1;
+    }
+
+    .page-title {
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin: 0 0 0.5rem 0;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        color: #1e293b;
+        letter-spacing: -0.025em;
+    }
+
+    .page-title i {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        padding: 1rem;
+        border-radius: 1rem;
+        font-size: 1.5rem;
+        box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .page-subtitle {
+        font-size: 1.125rem;
+        margin: 0;
+        color: #64748b;
+        font-weight: 500;
+    }
+
+    .header-actions .btn-primary {
+        padding: 1rem 2rem;
+        font-size: 1rem;
+        border-radius: 0.75rem;
+        box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    /* Section Headers */
+    .section-header {
+        margin-bottom: 2rem;
+        text-align: center;
+    }
+
+    .section-header h2 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #374151;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        margin: 0 0 0.5rem 0;
+    }
+
+    .section-subtitle {
+        color: #64748b;
+        font-weight: 500;
+    }
+
+    /* Professional Friends Grid */
+    .friends-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .friend-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(15px);
+        padding: 2rem;
+        border-radius: 1.5rem;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        opacity: 0;
+        transform: translateY(20px);
+        animation: cardSlideIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+
+    .friend-card:nth-child(1) { animation-delay: 0.1s; }
+    .friend-card:nth-child(2) { animation-delay: 0.2s; }
+    .friend-card:nth-child(3) { animation-delay: 0.3s; }
+    .friend-card:nth-child(4) { animation-delay: 0.4s; }
+
+    .friend-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+    }
+
+    .friend-avatar {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 800;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+        box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+        border: 4px solid white;
+    }
+
+    .friend-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .friend-name {
+        font-weight: 700;
+        color: #374151;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-size: 1.125rem;
+    }
+
+    .friend-name.mod-user {
+        color: #ef4444;
+    }
+
+    .mod-badge {
+        background: #ef4444;
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+
+    .friend-meta {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        font-size: 0.875rem;
+        color: #64748b;
+    }
+
+    .status-indicator {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 500;
+    }
+
+    .status-indicator i {
+        color: #10b981;
+        font-size: 0.625rem;
+    }
+
+    .joined-date {
+        font-weight: 500;
+    }
+
+    .friend-actions .chat-btn {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        text-decoration: none;
+        padding: 0.875rem 1.5rem;
+        border-radius: 0.75rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        font-size: 0.875rem;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .chat-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+    }
+
+    /* Requests Grid */
+    .requests-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .request-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(15px);
+        padding: 1.5rem;
+        border-radius: 1.5rem;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        opacity: 0;
+        transform: translateY(20px);
+        animation: cardSlideIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+
+    .request-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+    }
+
+    .request-avatar {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #10b981, #059669);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 700;
+        font-size: 1.25rem;
+        flex-shrink: 0;
+        box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        border: 3px solid white;
+    }
+
+    .request-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .request-name {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 1rem;
+    }
+
+    .request-name.mod-user {
+        color: #ef4444;
+    }
+
+    .request-message {
+        color: #64748b;
+        font-size: 0.875rem;
+        margin-bottom: 0.25rem;
+        font-weight: 500;
+    }
+
+    .request-date {
+        color: #94a3b8;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .request-actions {
+        display: flex;
+        gap: 0.75rem;
+    }
+
+    .btn-accept, .btn-reject {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        font-size: 1rem;
+        font-weight: 600;
+    }
+
+    .btn-accept {
+        background: #10b981;
+        color: white;
+        box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-accept:hover {
+        background: #059669;
+        transform: translateY(-2px) scale(1.1);
+        box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+    }
+
+    .btn-reject {
+        background: #ef4444;
+        color: white;
+        box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-reject:hover {
+        background: #dc2626;
+        transform: translateY(-2px) scale(1.1);
+        box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
+    }
+
+    /* Professional Empty State */
+    .empty-state {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(15px);
+        border-radius: 1.5rem;
+        padding: 4rem 2rem;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    }
+
+    .empty-icon {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+        color: #667eea;
+        margin-bottom: 2rem;
+        backdrop-filter: blur(10px);
+        border: 2px solid rgba(102, 126, 234, 0.2);
+    }
+
+    .empty-state h3 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #374151;
+        margin: 0 0 1rem 0;
+    }
+
+    .empty-state p {
+        color: #64748b;
+        margin: 0 0 2rem 0;
+        max-width: 400px;
+        font-size: 1.125rem;
+        font-weight: 500;
+    }
+
+    /* Professional Quick Navigation */
+    .quick-nav {
+        display: flex;
+        justify-content: center;
+        gap: 2rem;
+        margin-top: auto;
+        padding-top: 2rem;
+    }
+
+    .nav-btn {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.5rem 2rem;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(15px);
+        color: #64748b;
+        text-decoration: none;
+        border-radius: 1rem;
+        font-weight: 500;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        min-width: 200px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+
+    .nav-btn:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+        color: #374151;
+    }
+
+    .nav-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.125rem;
+        color: white;
+        flex-shrink: 0;
+    }
+
+    .nav-icon.search { background: #3b82f6; }
+    .nav-icon.rooms { background: #10b981; }
+
+    .nav-content {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .nav-title {
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+
+    .nav-subtitle {
+        font-size: 0.75rem;
+        opacity: 0.8;
+    }
+
+    /* Animations */
+    @keyframes cardSlideIn {
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Professional Responsive Design */
+    @media (max-width: 1200px) {
+        .friends-content {
+            padding: 2.5rem 1.5rem;
+        }
+        
+        .friends-grid {
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        }
+    }
+
+    @media (max-width: 768px) {
+        .friends-content {
+            padding: 2rem 1rem;
+            gap: 2rem;
+        }
+
+        .friends-header {
+            flex-direction: column;
+            text-align: center;
+            gap: 1.5rem;
+        }
+
+        .page-title {
+            font-size: 2rem;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .friends-grid,
+        .requests-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .friend-card,
+        .request-card {
+            flex-direction: column;
+            text-align: center;
+            gap: 1.5rem;
+            padding: 2rem 1.5rem;
+        }
+
+        .friend-meta {
+            justify-content: center;
+        }
+
+        .request-actions {
+            justify-content: center;
+        }
+
+        .quick-nav {
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .nav-btn {
+            width: 100%;
+            max-width: 300px;
+            justify-content: center;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .friends-content {
+            padding: 1.5rem 0.75rem;
+        }
+
+        .page-title {
+            font-size: 1.75rem;
+        }
+
+        .friend-avatar {
+            width: 60px;
+            height: 60px;
+            font-size: 1.25rem;
+        }
+
+        .request-avatar {
+            width: 50px;
+            height: 50px;
+            font-size: 1rem;
+        }
+
+        .empty-icon {
+            width: 100px;
+            height: 100px;
+            font-size: 2.5rem;
+        }
+    }
+
+    /* Custom scrollbar */
+    .main-content::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .main-content::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.05);
+    }
+
+    .main-content::-webkit-scrollbar-thumb {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        border-radius: 4px;
+    }
+
+    /* Accessibility improvements */
+    @media (prefers-reduced-motion: reduce) {
+        .friend-card,
+        .request-card {
+            animation: none;
+            opacity: 1;
+            transform: none;
+        }
+    }
+
+    /* High contrast mode */
+    @media (prefers-contrast: high) {
+        .friend-card,
+        .request-card {
+            border-width: 2px;
+            border-color: #000000;
+        }
+    }
+</style>
+{% endblock %}
