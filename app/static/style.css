@@ -1,0 +1,64 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+nav {
+  background: #333;
+  padding: 10px;
+}
+nav a {
+  color: white;
+  margin-right: 15px;
+  text-decoration: none;
+}
+.flash-container {
+  margin: 10px;
+}
+.flash {
+  background: #f0ad4e;
+  color: white;
+  padding: 8px;
+  border-radius: 4px;
+  margin-bottom: 5px;
+}
+main {
+  padding: 20px;
+}
+#chat-container {
+  display: flex;
+  gap: 20px;
+}
+#messages {
+  flex: 3;
+  height: 400px;
+  overflow-y: scroll;
+  border: 1px solid #ccc;
+  padding: 10px;
+}
+#online-users {
+  flex: 1;
+  border: 1px solid #ccc;
+  padding: 10px;
+  height: 400px;
+  overflow-y: auto;
+}
+
+.password-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.password-wrapper input {
+  padding-right: 2.5em;
+}
+.toggle-password {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2em;
+  position: absolute;
+  right: 0.3em;
+  user-select: none;
+  outline: none;
+}

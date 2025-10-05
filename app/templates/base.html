@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ChatHub - Professional Chat Platform{% endblock %}</title>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --accent-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+            --warning-color: #f59e0b;
+            --gray-50: #f8fafc;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-300: #cbd5e1;
+            --gray-400: #94a3b8;
+            --gray-500: #64748b;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-800: #1e293b;
+            --gray-900: #0f172a;
+            --white: #ffffff;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+        }
+
+        html, body {
+            height: 100%;
+            overflow-x: hidden;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--gray-50);
+            color: var(--gray-800);
+            line-height: 1.6;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Professional Navigation Bar - Consistent Across All Pages */
+        .navbar {
+            background: var(--primary-gradient);
+            color: var(--white);
+            padding: 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: var(--shadow-lg);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 2rem;
+            max-width: 100%;
+            height: 80px;
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            text-decoration: none;
+            color: var(--white);
+            font-weight: 800;
+            font-size: 1.5rem;
+            letter-spacing: -0.025em;
+        }
+
+        .nav-brand-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            list-style: none;
+            margin: 0;
+        }
+
+        .nav-link {
+            color: var(--white);
+            text-decoration: none;
+            font-weight: 500;
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .nav-link.active {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 1rem;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 1rem;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            min-width: 0;
+            flex-shrink: 0;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--white);
+            font-weight: 700;
+            font-size: 1rem;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            flex-shrink: 0;
+        }
+
+        .user-name {
+            font-weight: 600;
+            color: var(--white);
+            font-size: 0.875rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 120px;
+        }
+
+        .mod-user {
+            color: #fef3c7 !important;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .mod-badge {
+            background: var(--danger-color);
+            color: var(--white);
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin-left: 0.5rem;
+            box-shadow: var(--shadow-sm);
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        /* Mobile Navigation */
+        .mobile-menu-toggle {
+            display: none;
+            background: rgba(255, 255, 255, 0.15);
+            border: none;
+            color: var(--white);
+            cursor: pointer;
+            padding: 0.75rem;
+            border-radius: 0.75rem;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            font-size: 1.125rem;
+        }
+
+        /* Professional Flash Messages */
+        .flash-container {
+            position: fixed;
+            top: 90px;
+            right: 20px;
+            z-index: 2000;
+            max-width: 400px;
+        }
+
+        .flash {
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1rem;
+            border-radius: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            animation: flashSlideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .flash::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+            pointer-events: none;
+        }
+
+        .flash.success {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.95));
+            color: var(--white);
+            border-left: 4px solid #065f46;
+        }
+
+        .flash.error {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(220, 38, 38, 0.95));
+            color: var(--white);
+            border-left: 4px solid #991b1b;
+        }
+
+        .flash.info {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.95), rgba(37, 99, 235, 0.95));
+            color: var(--white);
+            border-left: 4px solid #1e40af;
+        }
+
+        .flash.message {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.95));
+            color: var(--white);
+            border-left: 4px solid #065f46;
+        }
+
+        .flash i {
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+
+        .flash-content {
+            flex: 1;
+            position: relative;
+            z-index: 1;
+        }
+
+        .flash-close {
+            background: none;
+            border: none;
+            color: var(--white);
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 0.25rem;
+            opacity: 0.8;
+            transition: opacity 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .flash-close:hover {
+            opacity: 1;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            width: 100%;
+            height: calc(100vh - 80px);
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .nav-container {
+                padding: 1rem 1.5rem;
+            }
+            
+            .nav-links {
+                gap: 0.25rem;
+            }
+            
+            .nav-link {
+                padding: 0.625rem 0.875rem;
+                font-size: 0.8125rem;
+            }
+
+            .user-name {
+                max-width: 100px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .nav-container {
+                padding: 1rem;
+            }
+
+            .nav-links {
+                position: fixed;
+                top: 80px;
+                left: 0;
+                right: 0;
+                background: var(--primary-gradient);
+                flex-direction: column;
+                padding: 1.5rem;
+                box-shadow: var(--shadow-xl);
+                transform: translateY(-100vh);
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                gap: 0.75rem;
+                backdrop-filter: blur(20px);
+            }
+
+            .nav-links.active {
+                transform: translateY(0);
+            }
+
+            .nav-link {
+                width: 100%;
+                padding: 1rem;
+                border-radius: 0.75rem;
+                justify-content: center;
+                font-size: 0.875rem;
+            }
+
+            .mobile-menu-toggle {
+                display: block;
+            }
+
+            .user-info {
+                order: -1;
+                margin-bottom: 1rem;
+                justify-content: center;
+                padding: 1rem;
+                width: 100%;
+            }
+
+            .user-name {
+                max-width: none;
+            }
+
+            .flash-container {
+                left: 10px;
+                right: 10px;
+                max-width: none;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .nav-brand {
+                font-size: 1.25rem;
+            }
+            
+            .nav-brand-icon {
+                width: 40px;
+                height: 40px;
+                font-size: 1.25rem;
+            }
+            
+            .user-avatar {
+                width: 36px;
+                height: 36px;
+                font-size: 0.875rem;
+            }
+
+            .flash {
+                padding: 1rem;
+                font-size: 0.875rem;
+            }
+        }
+
+        /* Animations */
+        @keyframes flashSlideIn {
+            from {
+                opacity: 0;
+                transform: translateX(100px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0) scale(1);
+            }
+        }
+
+        @keyframes flashSlideOut {
+            from {
+                opacity: 1;
+                transform: translateX(0) scale(1);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(100px) scale(0.9);
+            }
+        }
+
+        /* Utility Classes */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 0.875rem;
+            line-height: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover:before {
+            left: 100%;
+        }
+
+        .btn-primary {
+            background: var(--primary-gradient);
+            color: var(--white);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .btn-success {
+            background: var(--success-color);
+            color: var(--white);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-success:hover {
+            background: #059669;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .btn-danger {
+            background: var(--danger-color);
+            color: var(--white);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .btn-lg {
+            padding: 1rem 2rem;
+            font-size: 1rem;
+        }
+
+        .btn-sm {
+            padding: 0.5rem 1rem;
+            font-size: 0.8125rem;
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid var(--white);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Smooth scrolling */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* Focus styles for accessibility */
+        *:focus {
+            outline: 2px solid rgba(102, 126, 234, 0.5);
+            outline-offset: 2px;
+        }
+
+        /* Selection styles */
+        ::selection {
+            background: rgba(102, 126, 234, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <!-- Professional Navigation Bar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ url_for('main.home') }}" class="nav-brand">
+                <div class="nav-brand-icon">
+                    <i class="fas fa-comments"></i>
+                </div>
+                ChatHub
+            </a>
+            
+            <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">
+                <i class="fas fa-bars"></i>
+            </button>
+            
+            <ul class="nav-links" id="navLinks">
+                {% if session.user %}
+                    <li><a href="{{ url_for('main.chat_rooms') }}" class="nav-link">
+                        <i class="fas fa-home"></i> Rooms
+                    </a></li>
+                    <li><a href="{{ url_for('main.friends') }}" class="nav-link">
+                        <i class="fas fa-users"></i> Friends
+                    </a></li>
+                    <li><a href="{{ url_for('main.search_users') }}" class="nav-link">
+                        <i class="fas fa-search"></i> Find Users
+                    </a></li>
+                    
+                    <li class="user-info">
+                        <div class="user-avatar">
+                            {{ session.user[0].upper() }}
+                        </div>
+                        <div class="user-name {% if current_user and current_user.is_mod %}mod-user{% elif session.user == 'Red' %}mod-user{% endif %}">
+                            {{ session.user }}
+                            {% if (current_user and current_user.is_mod) or session.user == 'Red' %}
+                                <span class="mod-badge">
+                                    <i class="fas fa-fire"></i> MOD
+                                </span>
+                            {% endif %}
+                        </div>
+                    </li>
+                    
+                    <li><a href="{{ url_for('main.logout') }}" class="nav-link">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a></li>
+                {% else %}
+                    <li><a href="{{ url_for('main.login') }}" class="nav-link">
+                        <i class="fas fa-sign-in-alt"></i> Login
+                    </a></li>
+                    <li><a href="{{ url_for('main.register') }}" class="nav-link btn-primary">
+                        <i class="fas fa-user-plus"></i> Sign Up
+                    </a></li>
+                {% endif %}
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Professional Flash Messages -->
+    <div class="flash-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ 'success' if category == 'message' else category }}">
+                        <i class="fas fa-{% if category == 'error' %}exclamation-triangle{% elif category == 'success' or category == 'message' %}check-circle{% else %}info-circle{% endif %}"></i>
+                        <div class="flash-content">{{ message }}</div>
+                        <button class="flash-close" onclick="this.parentElement.remove()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <script>
+        function toggleMobileMenu() {
+            const navLinks = document.getElementById('navLinks');
+            navLinks.classList.toggle('active');
+        }
+
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', function(e) {
+            const navLinks = document.getElementById('navLinks');
+            const toggle = document.querySelector('.mobile-menu-toggle');
+            
+            if (!navLinks.contains(e.target) && !toggle.contains(e.target)) {
+                navLinks.classList.remove('active');
+            }
+        });
+
+        // Enhanced auto-hide flash messages
+        setTimeout(() => {
+            const flashMessages = document.querySelectorAll('.flash');
+            flashMessages.forEach((flash, index) => {
+                setTimeout(() => {
+                    flash.style.animation = 'flashSlideOut 0.5s ease forwards';
+                    setTimeout(() => flash.remove(), 500);
+                }, index * 200);
+            });
+        }, 4000);
+
+        // Add active class to current page nav link
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentPath = window.location.pathname;
+            const navLinks = document.querySelectorAll('.nav-link');
+            
+            navLinks.forEach(link => {
+                if (link.getAttribute('href') === currentPath) {
+                    link.classList.add('active');
+                }
+            });
+        });
+
+        // Fix navbar user info sizing issue
+        document.addEventListener('DOMContentLoaded', function() {
+            const userInfo = document.querySelector('.user-info');
+            const userName = document.querySelector('.user-name');
+            
+            if (userInfo && userName) {
+                // Prevent text overflow and maintain consistent sizing
+                const observer = new ResizeObserver(() => {
+                    userName.style.maxWidth = '120px';
+                });
+                
+                observer.observe(userInfo);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,623 @@
+{% extends 'base.html' %}
+
+{% block title %}Register - ChatHub{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-content">
+        <!-- Professional Register Card -->
+        <div class="auth-card">
+            <div class="auth-header">
+                <div class="auth-logo">
+                    <i class="fas fa-user-plus"></i>
+                </div>
+                <h1 class="auth-title">Join ChatHub</h1>
+                <p class="auth-subtitle">Create your account in seconds and start chatting immediately</p>
+            </div>
+
+            <form method="POST" class="auth-form">
+                <div class="form-group">
+                    <label for="username" class="form-label">
+                        <i class="fas fa-user"></i>
+                        Username
+                    </label>
+                    <input type="text" 
+                           id="username" 
+                           name="username" 
+                           class="form-input" 
+                           placeholder="Choose a username"
+                           required 
+                           autocomplete="username">
+                </div>
+
+                <div class="form-group">
+                    <label for="password" class="form-label">
+                        <i class="fas fa-lock"></i>
+                        Password
+                    </label>
+                    <div class="password-wrapper">
+                        <input type="password" 
+                               id="password" 
+                               name="password" 
+                               class="form-input" 
+                               placeholder="Create a secure password"
+                               required 
+                               autocomplete="new-password">
+                        <button type="button" class="password-toggle" onclick="togglePassword('password')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" class="auth-btn">
+                    <i class="fas fa-rocket"></i>
+                    <span>Create Account</span>
+                </button>
+            </form>
+
+            <div class="auth-divider">
+                <span>Already have an account?</span>
+            </div>
+
+            <a href="{{ url_for('main.login') }}" class="auth-link">
+                <i class="fas fa-sign-in-alt"></i>
+                <span>Sign In</span>
+            </a>
+        </div>
+
+        <!-- Professional Benefits Section -->
+        <div class="benefits-section">
+            <div class="benefits-header">
+                <h2>Why Join ChatHub?</h2>
+                <p>Join thousands of users on ChatHub</p>
+            </div>
+
+            <div class="benefit-card">
+                <div class="benefit-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="benefit-content">
+                    <h3>Meet new people</h3>
+                    <p>Connect and maintain friendships in our vibrant community</p>
+                </div>
+            </div>
+
+            <div class="benefit-card">
+                <div class="benefit-icon">
+                    <i class="fas fa-comments"></i>
+                </div>
+                <div class="benefit-content">
+                    <h3>Professional platform</h3>
+                    <p>Enjoy a professional chat platform designed for modern communication</p>
+                </div>
+            </div>
+
+            <div class="benefit-card">
+                <div class="benefit-icon">
+                    <i class="fas fa-globe"></i>
+                </div>
+                <div class="benefit-content">
+                    <h3>Global community</h3>
+                    <p>Connect with people from around the world in real-time</p>
+                </div>
+            </div>
+
+            <div class="stats-section">
+                <div class="stat">
+                    <div class="stat-number">10K+</div>
+                    <div class="stat-label">Active Users</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">5</div>
+                    <div class="stat-label">Chat Rooms</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">24/7</div>
+                    <div class="stat-label">Available</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Fullscreen Layout */
+    .main-content {
+        padding: 0 !important;
+        margin: 0 !important;
+        height: calc(100vh - 80px);
+        max-width: none !important;
+        overflow-y: auto;
+    }
+
+    .auth-container {
+        min-height: 100%;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+    }
+
+    .auth-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+                    radial-gradient(circle at 70% 70%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+        pointer-events: none;
+    }
+
+    .auth-content {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4rem;
+        max-width: 1200px;
+        width: 100%;
+        align-items: center;
+    }
+
+    /* Professional Auth Card */
+    .auth-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border-radius: 2rem;
+        padding: 3rem;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        animation: slideInLeft 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .auth-header {
+        text-align: center;
+        margin-bottom: 2.5rem;
+    }
+
+    .auth-logo {
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, #10b981, #059669);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
+        font-size: 2rem;
+        color: white;
+        box-shadow: 0 8px 32px rgba(16, 185, 129, 0.3);
+    }
+
+    .auth-title {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #1e293b;
+        margin: 0 0 0.5rem 0;
+        letter-spacing: -0.025em;
+    }
+
+    .auth-subtitle {
+        font-size: 1rem;
+        color: #64748b;
+        margin: 0;
+        font-weight: 500;
+    }
+
+    /* Professional Form Styling */
+    .auth-form {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #374151;
+        font-size: 0.875rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .form-label i {
+        color: #10b981;
+        width: 16px;
+    }
+
+    .form-input {
+        padding: 1rem 1.25rem;
+        border: 2px solid #e2e8f0;
+        border-radius: 0.75rem;
+        font-size: 1rem;
+        font-weight: 500;
+        background: rgba(248, 250, 252, 0.8);
+        backdrop-filter: blur(10px);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        color: #374151;
+    }
+
+    .form-input:focus {
+        outline: none;
+        border-color: #10b981;
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+        background: white;
+    }
+
+    .form-input::placeholder {
+        color: #94a3b8;
+        font-weight: 400;
+    }
+
+    .password-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .password-toggle {
+        position: absolute;
+        right: 1rem;
+        background: none;
+        border: none;
+        color: #64748b;
+        cursor: pointer;
+        padding: 0.5rem;
+        border-radius: 0.375rem;
+        transition: all 0.2s ease;
+    }
+
+    .password-toggle:hover {
+        color: #10b981;
+        background: rgba(16, 185, 129, 0.1);
+    }
+
+    .auth-btn {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        border: none;
+        padding: 1.25rem 2rem;
+        border-radius: 0.75rem;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        box-shadow: 0 4px 20px rgba(16, 185, 129, 0.3);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .auth-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: left 0.5s;
+    }
+
+    .auth-btn:hover::before {
+        left: 100%;
+    }
+
+    .auth-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 30px rgba(16, 185, 129, 0.4);
+    }
+
+    .auth-divider {
+        text-align: center;
+        margin: 1.5rem 0;
+        position: relative;
+        color: #64748b;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .auth-divider::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: #e2e8f0;
+        z-index: 1;
+    }
+
+    .auth-divider span {
+        background: rgba(255, 255, 255, 0.95);
+        padding: 0 1rem;
+        position: relative;
+        z-index: 2;
+    }
+
+    .auth-link {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        padding: 1rem 2rem;
+        border: 2px solid #e2e8f0;
+        border-radius: 0.75rem;
+        color: #64748b;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        background: rgba(248, 250, 252, 0.5);
+        backdrop-filter: blur(10px);
+    }
+
+    .auth-link:hover {
+        border-color: #10b981;
+        color: #10b981;
+        background: rgba(16, 185, 129, 0.05);
+        transform: translateY(-1px);
+    }
+
+    /* Professional Benefits Section */
+    .benefits-section {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+        animation: slideInRight 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .benefits-header {
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+
+    .benefits-header h2 {
+        font-size: 2rem;
+        font-weight: 800;
+        color: white;
+        margin: 0 0 0.5rem 0;
+        letter-spacing: -0.025em;
+    }
+
+    .benefits-header p {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 1rem;
+        font-weight: 500;
+        margin: 0;
+    }
+
+    .benefit-card {
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(15px);
+        border-radius: 1.5rem;
+        padding: 1.5rem;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .benefit-card:hover {
+        background: rgba(255, 255, 255, 0.25);
+        transform: translateX(4px);
+    }
+
+    .benefit-icon {
+        width: 50px;
+        height: 50px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        color: white;
+        flex-shrink: 0;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .benefit-content {
+        color: white;
+    }
+
+    .benefit-content h3 {
+        font-size: 1.125rem;
+        font-weight: 700;
+        margin: 0 0 0.25rem 0;
+        color: white;
+    }
+
+    .benefit-content p {
+        margin: 0;
+        opacity: 0.9;
+        line-height: 1.5;
+        font-weight: 500;
+        font-size: 0.875rem;
+    }
+
+    /* Stats Section */
+    .stats-section {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    .stat {
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(15px);
+        border-radius: 1rem;
+        padding: 1.25rem 1rem;
+        text-align: center;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        flex: 1;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .stat:hover {
+        background: rgba(255, 255, 255, 0.25);
+        transform: translateY(-2px);
+    }
+
+    .stat-number {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: white;
+        margin-bottom: 0.25rem;
+    }
+
+    .stat-label {
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.8);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+    }
+
+    /* Animations */
+    @keyframes slideInLeft {
+        from {
+            opacity: 0;
+            transform: translateX(-50px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    @keyframes slideInRight {
+        from {
+            opacity: 0;
+            transform: translateX(50px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    /* Responsive Design */
+    @media (max-width: 1024px) {
+        .auth-content {
+            grid-template-columns: 1fr;
+            gap: 3rem;
+            max-width: 500px;
+        }
+
+        .benefits-section {
+            order: -1;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .auth-container {
+            padding: 1rem;
+        }
+
+        .auth-card {
+            padding: 2rem;
+            border-radius: 1.5rem;
+        }
+
+        .auth-title,
+        .benefits-header h2 {
+            font-size: 1.75rem;
+        }
+
+        .stats-section {
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .benefit-card {
+            padding: 1.25rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .auth-card {
+            padding: 1.5rem;
+        }
+
+        .auth-logo {
+            width: 70px;
+            height: 70px;
+            font-size: 1.75rem;
+        }
+
+        .auth-title,
+        .benefits-header h2 {
+            font-size: 1.5rem;
+        }
+
+        .benefit-card {
+            flex-direction: column;
+            text-align: center;
+            gap: 1rem;
+        }
+
+        .benefit-icon {
+            width: 45px;
+            height: 45px;
+            font-size: 1.125rem;
+            margin: 0 auto;
+        }
+    }
+
+    /* Custom scrollbar */
+    .main-content::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .main-content::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .main-content::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 4px;
+    }
+</style>
+
+<script>
+    function togglePassword(inputId) {
+        const input = document.getElementById(inputId);
+        const toggle = input.nextElementSibling;
+        const icon = toggle.querySelector('i');
+        
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        } else {
+            input.type = 'password';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+    }
+
+    // Auto-focus first input
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(() => {
+            document.getElementById('username').focus();
+        }, 500);
+    });
+</script>
+{% endblock %}

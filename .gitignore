@@ -1,0 +1,34 @@
+# Python
+venv/
+.env
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.log
+instance/
+.pytest_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Flask/DB
+chat.db
+migrations/versions/*.pyc
+
+# Node/React
+chathub-frontend/node_modules/
+chathub-frontend/.pnp*
+chathub-frontend/build/
+chathub-frontend/.cache/
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
